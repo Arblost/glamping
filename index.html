@@ -1604,7 +1604,7 @@
               </div>
               <div class="toolbar" aria-label="Acciones principales">
                 ${iconButton("export-data", "download", "Exportar respaldo")}
-                ${iconButton("pick-import", "upload", "Importar respaldo")}
+                ${state.isAdmin ? iconButton("pick-import", "upload", "Importar respaldo") : ""}
                 ${iconButton("open-cierre", "wallet", "Cierre de caja")}
                 ${iconButton("open-history", "history", "Historial")}
                 ${state.isAdmin ? iconButton("open-config", "settings", "Configuracion") : ""}
@@ -1721,6 +1721,11 @@
               ` : ""}
             `}
           </main>
+
+          <div class="row wrap" style="padding:8px 12px;gap:6px;border-top:1px solid var(--line);background:var(--panel)">
+            <button class="btn ghost" data-action="export-data" style="font-size:12px"><i data-lucide="download"></i>Exportar respaldo</button>
+            ${state.isAdmin ? `<button class="btn ghost" data-action="pick-import" style="font-size:12px"><i data-lucide="upload"></i>Importar respaldo</button>` : ""}
+          </div>
 
           ${state.cart.length ? renderBottomBar(totalData) : ""}
           ${renderModal()}
