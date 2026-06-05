@@ -372,6 +372,88 @@
       transform: translateX(15px);
     }
 
+    .tab-bar {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 10px;
+      background: var(--panel);
+      border-radius: var(--radius);
+      padding: 3px;
+      border: 1px solid var(--line);
+    }
+
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 8px 12px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: calc(var(--radius) - 2px);
+      cursor: pointer;
+      transition: background .14s, color .14s;
+    }
+
+    .tab.active {
+      background: var(--accent);
+      color: var(--accent-text, #fff);
+    }
+
+    .tab i, .tab svg {
+      width: 16px;
+      height: 16px;
+      vertical-align: middle;
+      margin-right: 5px;
+    }
+
+    .category-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .category-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+    }
+
+    .category-item .cat-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    .category-item .cat-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .category-item .cat-name {
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .category-item .cat-count {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .category-item .cat-actions {
+      display: flex;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
     .category-row {
       display: flex;
       gap: 7px;
@@ -573,6 +655,10 @@
       width: min(900px, 100%);
     }
 
+    .modal.medium {
+      width: min(400px, 100%);
+    }
+
     .modal.small {
       width: min(420px, 100%);
     }
@@ -690,6 +776,13 @@
       display: block;
       margin-top: 5px;
       font-size: 18px;
+    }
+
+    #cierre-content {
+      background: var(--panel);
+      padding: 8px;
+      border-radius: 8px;
+      color: var(--text);
     }
 
     .cart-line,
@@ -843,14 +936,24 @@
     }
 
     .receipt-box {
-      max-width: 230px;
-      max-height: 64vh;
-      overflow: auto;
+      width: 80mm;
+      max-width: 80mm;
       margin: 0 auto;
       background: #fff;
       color: #000;
       border-radius: 4px;
       border: 1px solid #ddd;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    .receipt-box > div {
+      width: 58mm !important;
+      max-width: 58mm !important;
+      padding: 2mm !important;
+      box-sizing: border-box !important;
+      text-align: left !important;
     }
 
     .toast-stack {
@@ -964,9 +1067,33 @@
       .bottom-actions {
         flex-wrap: wrap;
       }
+
+      .tab {
+        font-size: 12px;
+        padding: 6px 8px;
+      }
+
+      .tab i, .tab svg {
+        margin-right: 3px;
+      }
     }
 
     @media print {
+      @page {
+        size: 58mm auto !important;
+        margin: 0 auto !important;
+      }
+
+      html, body {
+        width: 58mm !important;
+        height: auto !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
+        background: #fff !important;
+        overflow: visible !important;
+        text-align: center !important;
+      }
+
       body * {
         visibility: hidden;
       }
@@ -978,26 +1105,30 @@
 
       #thermal-receipt {
         display: block !important;
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 58mm;
-        padding: 2mm;
-        background: #fff;
-        color: #000;
-      }
-
-      @page {
-        size: 58mm auto;
-        margin: 0;
+        position: relative !important;
+        margin: 0 auto !important;
+        text-align: left !important;
+        width: 58mm !important;
+        max-width: 58mm !important;
+        min-width: 58mm !important;
+        padding: 2mm !important;
+        background: #fff !important;
+        color: #000 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        left: auto !important;
+        right: auto !important;
+        transform: none !important;
       }
     }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
   <div id="app"></div>
   <div id="toastStack" class="toast-stack" aria-live="polite"></div>
   <div id="thermal-receipt"></div>
+  <input id="importFile" class="hidden-file" type="file" accept=".json">
 
   <script>
     const ICONS = {
@@ -1172,8 +1303,10 @@
     let state = loadState();
     state.iconOptions.forEach((item) => iconNames.add(item.value));
     let ui = {
+      activeTab: "todos",
       selectedCategory: 0,
       search: "",
+      categorySearch: "",
       historySearch: "",
       historyMode: "hoy",
       historyDate: todayISO(),
@@ -1393,7 +1526,7 @@
     }
 
     function filteredCategories() {
-      const query = ui.search.trim().toLowerCase();
+      const query = ui.categorySearch.trim().toLowerCase();
       if (!query) return state.categories;
       return state.categories.filter((category) => category.name.toLowerCase().includes(query));
     }
@@ -1470,6 +1603,8 @@
                 <span class="brand-name">${escapeHtml(state.config.name)}</span>
               </div>
               <div class="toolbar" aria-label="Acciones principales">
+                ${iconButton("export-data", "download", "Exportar respaldo")}
+                ${iconButton("pick-import", "upload", "Importar respaldo")}
                 ${iconButton("open-cierre", "wallet", "Cierre de caja")}
                 ${iconButton("open-history", "history", "Historial")}
                 ${state.isAdmin ? iconButton("open-config", "settings", "Configuracion") : ""}
@@ -1501,58 +1636,90 @@
           </section>
 
           <main class="content">
-            <div class="search-wrap">
-              <i data-lucide="search"></i>
-              <input id="catalogSearch" class="input" data-bind="search" placeholder="Buscar producto o categoria..." value="${escapeHtml(ui.search)}">
-            </div>
-
-            <div class="category-row" role="tablist" aria-label="Categorias">
-              <button class="chip ${ui.selectedCategory === 0 ? "active" : ""}" data-action="select-category" data-id="0">
-                <i data-lucide="grid-3-x-3"></i> Todos
+            <div class="tab-bar">
+              <button class="tab ${ui.activeTab === "todos" ? "active" : ""}" data-action="switch-tab" data-id="todos">
+                <i data-lucide="grid-3-x-3"></i>Todos
               </button>
-              ${filteredCategories().map((category) => `
-                <button
-                  class="chip ${ui.selectedCategory === category.id ? "active" : ""}"
-                  data-action="select-category"
-                  data-id="${category.id}"
-                  ${ui.selectedCategory === category.id ? `style="background:${escapeHtml(category.color)};border-color:${escapeHtml(category.color)};color:#fff"` : ""}
-                >
-                  ${iconMarkup(category.icon, category.color)}
-                  ${escapeHtml(category.name)}
-                  <span class="count">(${counts[category.id] || 0})</span>
-                </button>
-              `).join("")}
+              <button class="tab ${ui.activeTab === "categoria" ? "active" : ""}" data-action="switch-tab" data-id="categoria">
+                <i data-lucide="tags"></i>Categoria
+              </button>
             </div>
 
-            ${selectedCategory ? `
-              <div class="category-title">
-                ${iconButton("select-category", "arrow-left", "Volver", "ghost", "", 0)}
-                ${iconMarkup(selectedCategory.icon, selectedCategory.color)}
-                <span>${escapeHtml(selectedCategory.name)}</span>
-                <span class="muted">${products.length} productos</span>
+            ${ui.activeTab === "todos" ? `
+              <div class="search-wrap">
+                <i data-lucide="search"></i>
+                <input id="catalogSearch" class="input" data-bind="search" placeholder="Buscar producto..." value="${escapeHtml(ui.search)}">
               </div>
-            ` : ""}
 
-            ${products.length ? `
-              <section class="products-grid">
-                ${products.map((product) => productCard(product)).join("")}
-              </section>
-            ` : `
-              <section class="empty-state">
-                <div>
-                  <i data-lucide="package"></i>
-                  <strong>No hay productos</strong>
-                  <div class="muted">Ajusta la busqueda o agrega productos en modo admin.</div>
+              ${selectedCategory ? `
+                <div class="category-title">
+                  ${iconButton("select-category", "arrow-left", "Todos", "ghost", "", 0)}
+                  ${iconMarkup(selectedCategory.icon, selectedCategory.color)}
+                  <span>${escapeHtml(selectedCategory.name)}</span>
+                  <span class="muted">${products.length} productos</span>
                 </div>
-              </section>
-            `}
+              ` : ""}
 
-            ${state.isAdmin ? `
-              <div class="row wrap" style="margin-top:14px">
-                <button class="btn" data-action="open-product-form"><i data-lucide="plus"></i>Agregar producto</button>
-                <button class="btn" data-action="open-category-form"><i data-lucide="folder-plus"></i>Agregar categoria</button>
-              </div>
-            ` : ""}
+              ${products.length ? `
+                <section class="products-grid">
+                  ${products.map((product) => productCard(product)).join("")}
+                </section>
+              ` : `
+                <section class="empty-state">
+                  <div>
+                    <i data-lucide="package"></i>
+                    <strong>No hay productos</strong>
+                    <div class="muted">${selectedCategory ? "Esta categoria no tiene productos." : "Agrega productos desde la pestana Categoria."}</div>
+                  </div>
+                </section>
+              `}
+
+              ${state.isAdmin ? `
+                <div class="row wrap" style="margin-top:14px">
+                  <button class="btn" data-action="open-product-form"><i data-lucide="plus"></i>Agregar producto</button>
+                </div>
+              ` : ""}
+            ` : `
+              ${state.categories.length ? `
+                <div class="search-wrap">
+                  <i data-lucide="search"></i>
+                  <input id="categorySearch" class="input" data-bind-ui="categorySearch" placeholder="Buscar categoria..." value="${escapeHtml(ui.categorySearch)}">
+                </div>
+                <div class="category-list">
+                  ${filteredCategories().map((cat) => `
+                    <div class="category-item" data-action="select-category" data-id="${cat.id}" style="cursor:pointer">
+                      <div class="cat-icon" style="background:${escapeHtml(cat.color)}22">
+                        ${iconMarkup(cat.icon, cat.color)}
+                      </div>
+                      <div class="cat-info">
+                        <div class="cat-name">${escapeHtml(cat.name)}</div>
+                        <div class="cat-count">${counts[cat.id] || 0} productos</div>
+                      </div>
+                      ${state.isAdmin ? `
+                        <div class="cat-actions" data-stop>
+                          ${iconButton("edit-category", "pencil", "Editar", "ghost", "", cat.id)}
+                          ${iconButton("delete-category", "trash-2", "Eliminar", "ghost", "color:var(--red)", cat.id)}
+                        </div>
+                      ` : ""}
+                    </div>
+                  `).join("")}
+                </div>
+              ` : `
+                <section class="empty-state">
+                  <div>
+                    <i data-lucide="tags"></i>
+                    <strong>No hay categorias</strong>
+                    <div class="muted">Crea categorias para organizar tus productos.</div>
+                  </div>
+                </section>
+              `}
+
+              ${state.isAdmin ? `
+                <div class="row wrap" style="margin-top:14px">
+                  <button class="btn" data-action="open-category-form"><i data-lucide="folder-plus"></i>Agregar categoria</button>
+                </div>
+              ` : ""}
+            `}
           </main>
 
           ${state.cart.length ? renderBottomBar(totalData) : ""}
@@ -1630,16 +1797,16 @@
       if (ui.modal === "cart") return modal("Carrito de compras", "shopping-cart", renderCartBody(), renderCartFooter());
       if (ui.modal === "config") return modal("Configuracion", "settings", renderConfigBody(), renderConfigFooter(), "wide");
       if (ui.modal === "history") return modal("Historial de facturas", "history", renderHistoryBody(), renderHistoryFooter(), "wide");
-      if (ui.modal === "cierre") return modal("Cierre de caja", "wallet", renderCierreBody(), "", "small");
+      if (ui.modal === "cierre") return modal("Cierre de caja", "wallet", renderCierreBody(), renderCierreFooter(), "medium");
       if (ui.modal === "admin") return modal("Acceso administrador", "lock", renderAdminBody(), renderAdminFooter(), "small");
       if (ui.modal === "product") return modal(ui.editProductId ? "Editar producto" : "Agregar producto", "package", renderProductForm(), renderProductFooter(), "small");
       if (ui.modal === "category") return modal(ui.editCategoryId ? "Editar categoria" : "Agregar categoria", "tags", renderCategoryForm(), renderCategoryFooter(), "small");
       if (ui.modal === "icon") return modal("Agregar icono", "sparkles", renderIconForm(), renderIconFooter(), "small");
-      if (ui.modal === "ticket") return modal("Vista previa ticket", "eye", `<div class="receipt-box">${buildReceiptHTML()}</div>`, "", "small");
+      if (ui.modal === "ticket") return modal("Vista previa ticket", "eye", `<div class="receipt-box">${buildReceiptHTML()}</div>`, "", "medium");
       if (ui.modal.startsWith("invoice:")) {
         const invoice = state.invoices.find((item) => item.id === ui.modal.split(":")[1]);
         const reprints = Number(invoice?.reimpresiones || 0);
-        return modal("Detalle factura", "receipt", `<div class="receipt-box">${invoice ? buildReceiptHTML(invoice) : ""}</div>`, invoice ? `<button class="btn" data-action="reprint-invoice" data-id="${invoice.id}"><i data-lucide="printer"></i>Reimprimir${reprints > 0 ? ` (${reprints})` : ""}</button>` : "", "small");
+        return modal("Detalle factura", "receipt", `<div class="receipt-box">${invoice ? buildReceiptHTML(invoice) : ""}</div>`, invoice ? `<button class="btn" data-action="reprint-invoice" data-id="${invoice.id}"><i data-lucide="printer"></i>Reimprimir${reprints > 0 ? ` (${reprints})` : ""}</button>` : "", "medium");
       }
       return "";
     }
@@ -1780,10 +1947,7 @@
           <div class="divider"></div>
 
           <div class="row wrap">
-            <button class="btn" data-action="export-data"><i data-lucide="download"></i>Exportar respaldo</button>
-            <button class="btn" data-action="pick-import"><i data-lucide="upload"></i>Importar respaldo</button>
             <button class="btn" data-action="open-ticket"><i data-lucide="eye"></i>Ver ticket</button>
-            <input id="importFile" class="hidden-file" type="file" accept=".json">
           </div>
         </div>
       `;
@@ -1903,7 +2067,7 @@
     function renderCierreBody() {
       const stats = cierreCajaStats();
       return `
-        <div class="stack">
+        <div id="cierre-content" class="stack">
           <div class="grid-2">
             <div class="stat-card"><span>Ventas</span><strong style="color:var(--green)">${hnl(stats.totalVentas)}</strong></div>
             <div class="stat-card"><span>Facturas</span><strong>${stats.facturas}</strong></div>
@@ -1926,6 +2090,10 @@
           ` : ""}
         </div>
       `;
+    }
+
+    function renderCierreFooter() {
+      return `<button class="btn" data-action="save-cierre-image"><i data-lucide="image"></i>Guardar imagen</button>`;
     }
 
     function renderAdminBody() {
@@ -2131,9 +2299,67 @@
       const node = document.getElementById("thermal-receipt");
       node.innerHTML = html;
       setTimeout(() => {
-        window.print();
+        const printContent = node.innerHTML;
+        const printWindow = window.open("", "_blank", "width=400,height=700");
+        if (printWindow) {
+          printWindow.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <title>Ticket - 58mm</title>
+  <style>
+    @page {
+      size: 58mm auto;
+      margin: 0 auto;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { 
+      width: 58mm !important; 
+      background: #fff; 
+      text-align: center;
+    }
+    .ticket { 
+      display: block !important;
+      position: relative !important;
+      width: 58mm !important; 
+      max-width: 58mm !important;
+      min-width: 58mm !important;
+      padding: 2mm !important;
+      margin: 0 auto !important;
+      font-family: 'Courier New', Courier, monospace !important;
+      font-size: 11px !important;
+      line-height: 1.2 !important;
+      background: #fff !important;
+      color: #000 !important;
+      text-align: left !important;
+      left: auto !important;
+      right: auto !important;
+      transform: none !important;
+    }
+    @media screen {
+      body { 
+        display: flex; 
+        justify-content: center; 
+        background: #f0f0f0; 
+        padding: 20px; 
+      }
+      .ticket { 
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2); 
+        margin: 0 auto !important;
+      }
+    }
+  </style>
+</head>
+<body><div class="ticket">${printContent}</div></body>
+</html>`);
+          printWindow.document.close();
+          setTimeout(() => {
+            printWindow.print();
+          }, 400);
+        } else {
+          window.print();
+        }
         node.innerHTML = "";
-      }, 200);
+      }, 300);
     }
 
     function buildReceiptHTML(invoice) {
@@ -2172,7 +2398,7 @@
         ? `<div style="text-align:center;font-weight:bold;font-size:16px;color:red;border:2px solid red;padding:4px;margin:8px 0">ANULADA</div>`
         : "";
       return `
-        <div style="font-family:monospace;font-size:11px;line-height:1.3;max-width:58mm;padding:2mm;color:#000;background:#fff">
+        <div style="font-family:'Courier New',Courier,monospace;font-size:11px;line-height:1.2;width:58mm;max-width:58mm;padding:1mm;box-sizing:border-box;color:#000;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact">
           ${logo}
           <div style="text-align:center;font-weight:bold;font-size:14px">${escapeHtml(cfg.name)}</div>
           <div style="text-align:center;font-size:11px">${escapeHtml(cfg.address)}<br>RTN: ${escapeHtml(cfg.rfc)}</div>
@@ -2310,6 +2536,26 @@
       toast("Respaldo JSON exportado", "success");
     }
 
+    async function saveCierreAsImage() {
+      const element = document.getElementById("cierre-content");
+      if (!element) return toast("No se encontro el contenido", "error");
+      try {
+        const canvas = await html2canvas(element, {
+          backgroundColor: "#ffffff",
+          scale: 2,
+          useCORS: true,
+          logging: false
+        });
+        const link = document.createElement("a");
+        link.download = `cierre-caja-${todayISO()}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+        toast("Imagen guardada", "success");
+      } catch (e) {
+        toast("Error al guardar imagen", "error");
+      }
+    }
+
     function exportPayload() {
       return {
         config: state.config,
@@ -2432,15 +2678,17 @@
 
       if (action !== "close-modal") event.stopPropagation();
       if (action === "close-modal") return closeModal();
+      if (action === "switch-tab") { ui.activeTab = id; ui.selectedCategory = 0; ui.search = ""; ui.categorySearch = ""; return render(); }
       if (action === "open-cart") { ui.modal = "cart"; return render(); }
       if (action === "open-history") { ui.modal = "history"; return render(); }
       if (action === "open-cierre") { ui.modal = "cierre"; return render(); }
+      if (action === "save-cierre-image") return saveCierreAsImage();
       if (action === "open-admin") { ui.modal = "admin"; return render(); }
       if (action === "open-config") return openConfig();
       if (action === "toggle-theme") { state.darkMode = !state.darkMode; saveState(); return render(); }
       if (action === "toggle-isv") { state.isvEnabled = !state.isvEnabled; saveState(); return render(); }
       if (action === "toggle-senior") { state.descuentoTerceraEdadEnabled = !state.descuentoTerceraEdadEnabled; saveState(); return render(); }
-      if (action === "select-category") { ui.selectedCategory = Number(id); return render(); }
+      if (action === "select-category") { ui.selectedCategory = Number(id); ui.activeTab = "todos"; ui.search = ""; return render(); }
       if (action === "add-cart") return addToCart(id);
       if (action === "qty-dec") return updateQty(id, -1);
       if (action === "qty-inc") return updateQty(id, 1);
