@@ -70,19 +70,16 @@
     }
 
     .app-shell {
-      min-height: 100vh;
+      height: 100dvh;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
     }
 
     .app-header {
-      position: sticky;
-      top: 0;
-      z-index: 20;
-      background: color-mix(in srgb, var(--panel) 94%, transparent);
+      flex-shrink: 0;
       border-bottom: 1px solid var(--line);
-      box-shadow: 0 2px 10px rgb(24 32 45 / 5%);
-      backdrop-filter: blur(10px);
+      background: var(--panel);
     }
 
     .header-row,
@@ -146,6 +143,7 @@
     .customer-band {
       background: var(--panel);
       border-bottom: 1px solid var(--line);
+      flex-shrink: 0;
     }
 
     .customer-row {
@@ -159,8 +157,10 @@
 
     .content {
       flex: 1;
+      min-height: 0;
+      overflow-y: auto;
       padding-top: 12px;
-      padding-bottom: 96px;
+      padding-bottom: 12px;
     }
 
     .field {
@@ -409,8 +409,8 @@
     }
 
     .category-list {
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 8px;
     }
 
@@ -584,15 +584,9 @@
     }
 
     .bottom-bar {
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 18;
-      background: color-mix(in srgb, var(--panel) 96%, transparent);
+      flex-shrink: 0;
+      background: var(--panel);
       border-top: 1px solid var(--line);
-      box-shadow: 0 -10px 30px rgb(24 32 45 / 10%);
-      backdrop-filter: blur(10px);
     }
 
     .bottom-inner {
@@ -998,7 +992,22 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
+    @media (max-width: 1024px) {
+      .products-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .category-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
     @media (max-width: 760px) {
+      .header-row {
+        padding-left: 8px;
+        padding-right: 8px;
+      }
+
       .customer-row {
         grid-template-columns: 1fr 1fr;
       }
@@ -1024,6 +1033,10 @@
         padding: 10px;
       }
 
+      .modal {
+        max-height: 92vh;
+      }
+
       .grid-2,
       .grid-3 {
         grid-template-columns: 1fr;
@@ -1036,12 +1049,13 @@
       .cart-line .item-price {
         grid-column: 1 / 2;
       }
-    }
 
-    @media (max-width: 460px) {
-      .header-row {
-        padding-left: 8px;
-        padding-right: 8px;
+      .category-list {
+        grid-template-columns: 1fr;
+      }
+
+      .category-item {
+        padding: 8px 10px;
       }
 
       .brand-name {
@@ -1049,23 +1063,7 @@
       }
 
       .toolbar {
-        gap: 2px;
-      }
-
-      .icon-btn {
-        width: 32px;
-      }
-
-      .customer-row {
-        grid-template-columns: 1fr;
-      }
-
-      .products-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .bottom-actions {
-        flex-wrap: wrap;
+        gap: 4px;
       }
 
       .tab {
@@ -1075,6 +1073,170 @@
 
       .tab i, .tab svg {
         margin-right: 3px;
+      }
+
+      .content {
+      }
+    }
+
+    @media (max-width: 480px) {
+      .header-row {
+        padding-left: 6px;
+        padding-right: 6px;
+      }
+
+      .brand-name {
+        max-width: 25vw;
+        font-size: 14px;
+      }
+
+      .brand-logo {
+        max-width: 32px;
+        max-height: 32px;
+      }
+
+      .toolbar {
+        gap: 2px;
+      }
+
+      .icon-btn {
+        width: 30px;
+        height: 30px;
+        min-height: 30px;
+      }
+
+      .customer-row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+        padding-top: 6px;
+        padding-bottom: 6px;
+      }
+
+      .products-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      .product-card {
+        min-height: 130px;
+        padding: 12px 10px;
+        gap: 6px;
+      }
+
+      .product-icon {
+        width: 36px;
+        height: 36px;
+      }
+
+      .product-name {
+        min-height: 32px;
+        font-size: 12px;
+      }
+
+      .bottom-actions {
+        flex-wrap: wrap;
+      }
+
+      .bottom-info {
+        font-size: 12px;
+        gap: 4px;
+      }
+
+      .total-big {
+        font-size: 20px;
+      }
+
+      .tab {
+        font-size: 11px;
+        padding: 5px 6px;
+      }
+
+      .tab i, .tab svg {
+        margin-right: 2px;
+        width: 14px;
+        height: 14px;
+      }
+
+      .tab-bar {
+        padding: 2px;
+        gap: 2px;
+        margin-bottom: 8px;
+      }
+
+      .category-row {
+        gap: 5px;
+        padding-bottom: 6px;
+      }
+
+      .chip {
+        font-size: 12px;
+        min-height: 28px;
+        padding: 5px 8px;
+      }
+
+      .modal {
+        max-height: 96vh;
+        border-radius: calc(var(--radius) - 2px);
+      }
+
+      .modal-header,
+      .modal-footer {
+        padding: 10px;
+      }
+
+      .modal-body {
+        padding: 10px;
+      }
+
+      .modal-title {
+        font-size: 15px;
+      }
+
+      .search-wrap input {
+        font-size: 14px;
+      }
+
+      .cart-btn .cart-label {
+        display: none;
+      }
+
+      .category-item {
+        padding: 6px 8px;
+        gap: 8px;
+      }
+
+      .category-item .cat-icon {
+        width: 30px;
+        height: 30px;
+      }
+
+      .category-item .cat-name {
+        font-size: 13px;
+      }
+
+      .receipt-box {
+        width: 100%;
+        max-width: 100%;
+      }
+
+      .invoice-line {
+        font-size: 13px;
+      }
+
+      .invoice-summary {
+        padding: 10px;
+      }
+
+      .items-table {
+        font-size: 12px;
+      }
+
+      .stat-card {
+        padding: 10px;
+      }
+
+      .stat-card strong {
+        font-size: 16px;
       }
     }
 
@@ -1722,7 +1884,7 @@
             `}
           </main>
 
-          <div class="row wrap" style="padding:8px 12px;gap:6px;border-top:1px solid var(--line);background:var(--panel)">
+          <div class="row wrap" style="flex-shrink:0;padding:8px 12px;gap:6px;border-top:1px solid var(--line);background:var(--panel)">
             <button class="btn ghost" data-action="export-data" style="font-size:12px"><i data-lucide="download"></i>Exportar respaldo</button>
             ${state.isAdmin ? `<button class="btn ghost" data-action="pick-import" style="font-size:12px"><i data-lucide="upload"></i>Importar respaldo</button>` : ""}
           </div>
