@@ -1806,7 +1806,9 @@
       if (ui.modal.startsWith("invoice:")) {
         const invoice = state.invoices.find((item) => item.id === ui.modal.split(":")[1]);
         const reprints = Number(invoice?.reimpresiones || 0);
-        return modal("Detalle factura", "receipt", `<div class="receipt-box">${invoice ? buildReceiptHTML(invoice) : ""}</div>`, invoice ? `<button class="btn" data-action="reprint-invoice" data-id="${invoice.id}"><i data-lucide="printer"></i>Reimprimir${reprints > 0 ? ` (${reprints})` : ""}</button>` : "", "medium");
+        const voidBtn = invoice && !invoice.anulado ? `<button class="btn" data-action="void-invoice" data-id="${invoice.id}"><i data-lucide="ban"></i>Anular</button>` : "";
+        const deleteBtn = invoice && state.isAdmin ? `<button class="btn danger" data-action="delete-invoice" data-id="${invoice.id}"><i data-lucide="trash-2"></i>Eliminar</button>` : "";
+        return modal("Detalle factura", "receipt", `<div class="receipt-box">${invoice ? buildReceiptHTML(invoice) : ""}</div>`, invoice ? `<button class="btn" data-action="reprint-invoice" data-id="${invoice.id}"><i data-lucide="printer"></i>Reimprimir${reprints > 0 ? ` (${reprints})` : ""}</button>${voidBtn}${deleteBtn}` : "", "medium");
       }
       return "";
     }
