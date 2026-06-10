@@ -1242,12 +1242,12 @@
 
     @media print {
       @page {
-        size: 58mm auto !important;
-        margin: 0 auto !important;
+        size: 2in auto !important;
+        margin: 0 !important;
       }
 
       html, body {
-        width: 58mm !important;
+        width: 2in !important;
         height: auto !important;
         margin: 0 auto !important;
         padding: 0 !important;
@@ -1269,11 +1269,11 @@
         display: block !important;
         position: relative !important;
         margin: 0 auto !important;
-        text-align: left !important;
-        width: 58mm !important;
-        max-width: 58mm !important;
-        min-width: 58mm !important;
-        padding: 2mm !important;
+        text-align: center !important;
+        width: 2in !important;
+        max-width: 2in !important;
+        min-width: 2in !important;
+        padding: 1mm !important;
         background: #fff !important;
         color: #000 !important;
         -webkit-print-color-adjust: exact !important;
@@ -1282,9 +1282,18 @@
         right: auto !important;
         transform: none !important;
       }
+
+      #thermal-receipt table {
+        width: 100% !important;
+        text-align: center !important;
+      }
+
+      #thermal-receipt th, #thermal-receipt td {
+        text-align: center !important;
+      }
     }
   </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
 </head>
 <body>
   <div id="app"></div>
@@ -1353,6 +1362,7 @@
       "trash-2": '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
       "minus": '<path d="M5 12h14"/>',
       "pencil": '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/>',
+      "image": '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
       "image-plus": '<path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/><line x1="16" y1="5" x2="22" y2="5"/><line x1="19" y1="2" x2="19" y2="8"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
       "upload": '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
       "download": '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
@@ -1365,30 +1375,8 @@
 
     const ICON_SVG_ATTRS = 'xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
 
-    function renderInlineIcons(root) {
-      root = root || document;
-      const nodes = root.querySelectorAll('[data-lucide]');
-      nodes.forEach((node) => {
-        const name = node.getAttribute('data-lucide');
-        const body = ICONS[name] || ICONS['circle-fallback'];
-        const ns = 'http://www.w3.org/2000/svg';
-        const svg = document.createElementNS(ns, 'svg');
-        svg.setAttribute('xmlns', ns);
-        svg.setAttribute('width', '1em');
-        svg.setAttribute('height', '1em');
-        svg.setAttribute('viewBox', '0 0 24 24');
-        svg.setAttribute('fill', 'none');
-        svg.setAttribute('stroke', 'currentColor');
-        svg.setAttribute('stroke-width', '2');
-        svg.setAttribute('stroke-linecap', 'round');
-        svg.setAttribute('stroke-linejoin', 'round');
-        const origStyle = node.getAttribute('style');
-        if (origStyle) svg.setAttribute('style', origStyle);
-        const origClass = node.getAttribute('class');
-        if (origClass) svg.setAttribute('class', origClass);
-        svg.innerHTML = body;
-        node.replaceWith(svg);
-      });
+    function renderInlineIcons() {
+      // Obsoleto: Los iconos se inyectan directamente como cadenas SVG en las plantillas.
     }
 
     const STORE_KEY = "gramping-facturas-index-v1";
@@ -1501,7 +1489,7 @@
     }
 
     function structuredCloneSafe(value) {
-      return JSON.parse(JSON.stringify(value));
+      return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
     }
 
     function readJson(key) {
@@ -1592,6 +1580,19 @@
       };
     }
 
+    let saveTimeout = null;
+    function saveStateDebounced() {
+      if (saveTimeout) clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(saveState, 500);
+    }
+
+    window.addEventListener("beforeunload", () => {
+      if (saveTimeout) {
+        clearTimeout(saveTimeout);
+        saveState();
+      }
+    });
+
     function saveState() {
       try {
         localStorage.setItem(STORE_KEY, JSON.stringify(state));
@@ -1601,7 +1602,8 @@
     }
 
     function maxId(list) {
-      return Math.max(0, ...list.map((item) => Number(item.id) || 0));
+      const ids = list.map((item) => Number(item.id)).filter((id) => !isNaN(id));
+      return Math.max(0, ...ids);
     }
 
     function nextInvoiceFromHistory(invoices) {
@@ -1655,7 +1657,10 @@
         return `<span class="${className}" style="color:${escapeHtml(color)}">${escapeHtml(clean)}</span>`;
       }
       const lucideName = toKebabIcon(clean);
-      return `<i class="${className}" data-lucide="${lucideName}" style="color:${escapeHtml(color)}"></i>`;
+      const body = ICONS[lucideName] || ICONS[clean.toLowerCase()] || ICONS['circle-fallback'];
+      const styleStr = color ? `style="color:${escapeHtml(color)}"` : "";
+      const classStr = className ? `class="${className}"` : "";
+      return `<svg ${ICON_SVG_ATTRS} ${classStr} ${styleStr}>${body}</svg>`;
     }
 
     function productCountByCategory() {
@@ -1666,22 +1671,34 @@
     }
 
     function totals() {
-      const subtotal = round2(state.cart.reduce((sum, item) => sum + Number(item.price) * Number(item.qty), 0));
-      const taxableSubtotal = round2(state.cart.filter((item) => !item.exenta).reduce((sum, item) => sum + Number(item.price) * Number(item.qty), 0));
+      let subtotal = 0;
+      let taxableSubtotal = 0;
+      let totalItems = 0;
+      for (const item of state.cart) {
+        const qty = Number(item.qty) || 0;
+        const price = Number(item.price) || 0;
+        const amount = price * qty;
+        subtotal += amount;
+        if (!item.exenta) {
+          taxableSubtotal += amount;
+        }
+        totalItems += qty;
+      }
+      subtotal = round2(subtotal);
+      taxableSubtotal = round2(taxableSubtotal);
       const discount = state.descuentoTerceraEdadEnabled
         ? round2(subtotal * (Number(state.config.descuentoTerceraEdad) / 100))
         : 0;
       const discountedSubtotal = round2(subtotal - discount);
       const iva = state.isvEnabled ? round2(taxableSubtotal * (Number(state.config.taxRate) / 100)) : 0;
       const total = round2(discountedSubtotal + iva);
-      const totalItems = state.cart.reduce((sum, item) => sum + Number(item.qty), 0);
       return { subtotal, discount, discountedSubtotal, taxableSubtotal, iva, total, totalItems };
     }
 
     function filteredProducts() {
       const query = ui.search.trim().toLowerCase();
       return state.products.filter((product) => {
-        const categoryMatch = ui.selectedCategory === 0 || product.category === ui.selectedCategory;
+        const categoryMatch = String(ui.selectedCategory) === "0" || String(product.category) === String(ui.selectedCategory);
         const textMatch = !query || product.name.toLowerCase().includes(query);
         return categoryMatch && textMatch;
       });
@@ -1695,54 +1712,109 @@
 
     function filteredInvoices() {
       const query = ui.historySearch.trim().toLowerCase();
-      const now = new Date();
+      const mode = ui.historyMode;
+      const today = todayISO();
+      
+      let startDate = null;
+      if (mode === "semana" || mode === "mes" || mode === "ano") {
+        const now = new Date();
+        startDate = new Date(now);
+        if (mode === "semana") startDate.setDate(startDate.getDate() - 7);
+        else if (mode === "mes") startDate.setMonth(startDate.getMonth() - 1);
+        else if (mode === "ano") startDate.setFullYear(startDate.getFullYear() - 1);
+        startDate.setHours(0, 0, 0, 0);
+      }
+
       return state.invoices.filter((invoice) => {
         const textMatch = !query
           || String(invoice.receiptNo).toLowerCase().includes(query)
           || String(invoice.customerName || "").toLowerCase().includes(query);
         if (!textMatch) return false;
-        if (ui.historyMode === "hoy") return invoice.dateISO === todayISO();
-        if (ui.historyMode === "dia") return invoice.dateISO === ui.historyDate;
-        const invDate = new Date((invoice.dateISO || todayISO()) + "T12:00:00");
-        const start = new Date(now);
-        if (ui.historyMode === "semana") start.setDate(start.getDate() - 7);
-        if (ui.historyMode === "mes") start.setMonth(start.getMonth() - 1);
-        if (ui.historyMode === "ano") start.setFullYear(start.getFullYear() - 1);
-        return invDate >= start;
+        
+        if (mode === "hoy") return invoice.dateISO === today;
+        if (mode === "dia") return invoice.dateISO === ui.historyDate;
+        
+        if (startDate) {
+          const invDate = new Date((invoice.dateISO || today) + "T12:00:00");
+          return invDate >= startDate;
+        }
+        return true;
       });
     }
 
     function historyTotals(invoices = filteredInvoices()) {
-      const valid = invoices.filter((invoice) => !invoice.anulado);
+      let ventas = 0;
+      let facturas = 0;
+      let isv = 0;
+      let descuentos = 0;
+      let anuladas = 0;
+
+      for (const invoice of invoices) {
+        if (invoice.anulado) {
+          anuladas++;
+        } else {
+          facturas++;
+          ventas += Number(invoice.total) || 0;
+          isv += Number(invoice.iva) || 0;
+          descuentos += Number(invoice.descuentoTerceraEdad) || 0;
+        }
+      }
+
       return {
-        ventas: round2(valid.reduce((sum, invoice) => sum + Number(invoice.total), 0)),
-        facturas: valid.length,
-        isv: round2(valid.reduce((sum, invoice) => sum + Number(invoice.iva), 0)),
-        descuentos: round2(valid.reduce((sum, invoice) => sum + Number(invoice.descuentoTerceraEdad), 0)),
-        anuladas: invoices.filter((invoice) => invoice.anulado).length
+        ventas: round2(ventas),
+        facturas,
+        isv: round2(isv),
+        descuentos: round2(descuentos),
+        anuladas
       };
     }
 
     function cierreCajaStats() {
       const today = todayISO();
-      const todayInvoices = state.invoices.filter((invoice) => invoice.dateISO === today && !invoice.anulado);
-      const anuladasHoy = state.invoices.filter((invoice) => invoice.dateISO === today && invoice.anulado);
+      let totalVentas = 0;
+      let totalIsv = 0;
+      let totalDesc = 0;
+      let totalSubtotal = 0;
+      let totalItems = 0;
+      let reimpresiones = 0;
+      let anuladasHoy = 0;
+      let facturas = 0;
       const productCounts = {};
-      todayInvoices.forEach((invoice) => {
-        invoice.items.forEach((item) => {
-          productCounts[item.name] = (productCounts[item.name] || 0) + Number(item.qty || 0);
-        });
-      });
-      const topProducts = Object.entries(productCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+      for (const invoice of state.invoices) {
+        if (invoice.dateISO === today) {
+          reimpresiones += Number(invoice.reimpresiones || 0);
+          if (invoice.anulado) {
+            anuladasHoy++;
+          } else {
+            facturas++;
+            totalVentas += Number(invoice.total) || 0;
+            totalIsv += Number(invoice.iva) || 0;
+            totalDesc += Number(invoice.descuentoTerceraEdad) || 0;
+            totalSubtotal += Number(invoice.subtotal) || 0;
+            
+            for (const item of invoice.items) {
+              const qty = Number(item.qty) || 0;
+              totalItems += qty;
+              productCounts[item.name] = (productCounts[item.name] || 0) + qty;
+            }
+          }
+        }
+      }
+
+      const topProducts = Object.entries(productCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
       return {
-        totalVentas: round2(todayInvoices.reduce((sum, invoice) => sum + Number(invoice.total), 0)),
-        totalIsv: round2(todayInvoices.reduce((sum, invoice) => sum + Number(invoice.iva), 0)),
-        totalDesc: round2(todayInvoices.reduce((sum, invoice) => sum + Number(invoice.descuentoTerceraEdad), 0)),
-        totalSubtotal: round2(todayInvoices.reduce((sum, invoice) => sum + Number(invoice.subtotal), 0)),
-        totalItems: todayInvoices.reduce((sum, invoice) => sum + invoice.items.reduce((inner, item) => inner + Number(item.qty || 0), 0), 0),
-        reimpresiones: state.invoices.filter((invoice) => invoice.dateISO === today).reduce((sum, invoice) => sum + Number(invoice.reimpresiones || 0), 0),
-        anuladasHoy: anuladasHoy.length,
-        facturas: todayInvoices.length,
+        totalVentas: round2(totalVentas),
+        totalIsv: round2(totalIsv),
+        totalDesc: round2(totalDesc),
+        totalSubtotal: round2(totalSubtotal),
+        totalItems,
+        reimpresiones,
+        anuladasHoy,
+        facturas,
         topProducts
       };
     }
@@ -1752,7 +1824,7 @@
       const totalData = totals();
       const counts = productCountByCategory();
       const products = filteredProducts();
-      const selectedCategory = state.categories.find((category) => category.id === ui.selectedCategory);
+      const selectedCategory = state.categories.find((category) => String(category.id) === String(ui.selectedCategory));
 
       document.getElementById("app").innerHTML = `
         <div class="app-shell">
@@ -1775,7 +1847,7 @@
                   : iconButton("open-admin", "lock", "Admin")}
                 ${iconButton("toggle-theme", state.darkMode ? "sun" : "moon", "Tema")}
                 <button class="btn cart-btn" data-action="open-cart" title="Carrito">
-                  <i data-lucide="shopping-cart"></i><span class="cart-label">Carrito</span>
+                  ${iconMarkup("shopping-cart")}<span class="cart-label">Carrito</span>
                   ${totalData.totalItems ? `<span class="badge floating">${totalData.totalItems}</span>` : ""}
                 </button>
               </div>
@@ -1785,11 +1857,11 @@
           <section class="customer-band">
             <div class="customer-row">
               <label class="field" for="customerName">
-                <i data-lucide="user"></i>
+                ${iconMarkup("user")}
                 <input id="customerName" class="input" data-bind="customerName" placeholder="Nombre cliente" value="${escapeHtml(state.customerName)}">
               </label>
               <label class="field" for="customerRtn">
-                <i data-lucide="file-text"></i>
+                ${iconMarkup("file-text")}
                 <input id="customerRtn" class="input" data-bind="customerRtn" placeholder="RTN cliente" value="${escapeHtml(state.customerRtn)}">
               </label>
               ${switchButton("toggle-senior", state.descuentoTerceraEdadEnabled, "3ra Edad")}
@@ -1800,16 +1872,16 @@
           <main class="content">
             <div class="tab-bar">
               <button class="tab ${ui.activeTab === "todos" ? "active" : ""}" data-action="switch-tab" data-id="todos">
-                <i data-lucide="grid-3-x-3"></i>Todos
+                ${iconMarkup("grid-3-x-3")}Todos
               </button>
               <button class="tab ${ui.activeTab === "categoria" ? "active" : ""}" data-action="switch-tab" data-id="categoria">
-                <i data-lucide="tags"></i>Categoria
+                ${iconMarkup("tags")}Categoria
               </button>
             </div>
 
             ${ui.activeTab === "todos" ? `
               <div class="search-wrap">
-                <i data-lucide="search"></i>
+                ${iconMarkup("search")}
                 <input id="catalogSearch" class="input" data-bind="search" placeholder="Buscar producto..." value="${escapeHtml(ui.search)}">
               </div>
 
@@ -1829,7 +1901,7 @@
               ` : `
                 <section class="empty-state">
                   <div>
-                    <i data-lucide="package"></i>
+                    ${iconMarkup("package")}
                     <strong>No hay productos</strong>
                     <div class="muted">${selectedCategory ? "Esta categoria no tiene productos." : "Agrega productos desde la pestana Categoria."}</div>
                   </div>
@@ -1838,13 +1910,13 @@
 
               ${state.isAdmin ? `
                 <div class="row wrap" style="margin-top:14px">
-                  <button class="btn" data-action="open-product-form"><i data-lucide="plus"></i>Agregar producto</button>
+                  <button class="btn" data-action="open-product-form">${iconMarkup("plus")}Agregar producto</button>
                 </div>
               ` : ""}
             ` : `
               ${state.categories.length ? `
                 <div class="search-wrap">
-                  <i data-lucide="search"></i>
+                  ${iconMarkup("search")}
                   <input id="categorySearch" class="input" data-bind-ui="categorySearch" placeholder="Buscar categoria..." value="${escapeHtml(ui.categorySearch)}">
                 </div>
                 <div class="category-list">
@@ -1869,7 +1941,7 @@
               ` : `
                 <section class="empty-state">
                   <div>
-                    <i data-lucide="tags"></i>
+                    ${iconMarkup("tags")}
                     <strong>No hay categorias</strong>
                     <div class="muted">Crea categorias para organizar tus productos.</div>
                   </div>
@@ -1878,23 +1950,21 @@
 
               ${state.isAdmin ? `
                 <div class="row wrap" style="margin-top:14px">
-                  <button class="btn" data-action="open-category-form"><i data-lucide="folder-plus"></i>Agregar categoria</button>
+                  <button class="btn" data-action="open-category-form">${iconMarkup("folder-plus")}Agregar categoria</button>
                 </div>
               ` : ""}
             `}
           </main>
 
           <div class="row wrap" style="flex-shrink:0;padding:8px 12px;gap:6px;border-top:1px solid var(--line);background:var(--panel)">
-            <button class="btn ghost" data-action="export-data" style="font-size:12px"><i data-lucide="download"></i>Exportar respaldo</button>
-            ${state.isAdmin ? `<button class="btn ghost" data-action="pick-import" style="font-size:12px"><i data-lucide="upload"></i>Importar respaldo</button>` : ""}
+            <button class="btn ghost" data-action="export-data" style="font-size:12px">${iconMarkup("download")}Exportar respaldo</button>
+            ${state.isAdmin ? `<button class="btn ghost" data-action="pick-import" style="font-size:12px">${iconMarkup("upload")}Importar respaldo</button>` : ""}
           </div>
 
           ${state.cart.length ? renderBottomBar(totalData) : ""}
           ${renderModal()}
         </div>
       `;
-
-      renderInlineIcons(document.getElementById("app"));
     }
 
     function iconButton(action, icon, title, extraClass = "ghost", style = "", id = "") {
@@ -1907,7 +1977,7 @@
           aria-label="${escapeHtml(title)}"
           ${style ? `style="${style}"` : ""}
         >
-          <i data-lucide="${escapeHtml(icon)}"></i>
+          ${iconMarkup(icon)}
         </button>
       `;
     }
@@ -1952,7 +2022,7 @@
             <div class="bottom-actions">
               <strong class="total-big">${hnl(totalData.total)}</strong>
               <button class="btn" data-action="open-cart">Ver carrito</button>
-              <button class="btn success" data-action="print-cart"><i data-lucide="receipt"></i>Facturar</button>
+              <button class="btn success" data-action="print-cart">${iconMarkup("receipt")}Facturar</button>
             </div>
           </div>
         </div>
@@ -1973,9 +2043,9 @@
       if (ui.modal.startsWith("invoice:")) {
         const invoice = state.invoices.find((item) => item.id === ui.modal.split(":")[1]);
         const reprints = Number(invoice?.reimpresiones || 0);
-        const voidBtn = invoice && !invoice.anulado ? `<button class="btn" data-action="void-invoice" data-id="${invoice.id}"><i data-lucide="ban"></i>Anular</button>` : "";
-        const deleteBtn = invoice && state.isAdmin ? `<button class="btn danger" data-action="delete-invoice" data-id="${invoice.id}"><i data-lucide="trash-2"></i>Eliminar</button>` : "";
-        return modal("Detalle factura", "receipt", `<div class="receipt-box">${invoice ? buildReceiptHTML(invoice) : ""}</div>`, invoice ? `<button class="btn" data-action="reprint-invoice" data-id="${invoice.id}"><i data-lucide="printer"></i>Reimprimir${reprints > 0 ? ` (${reprints})` : ""}</button>${voidBtn}${deleteBtn}` : "", "medium");
+        const voidBtn = invoice && !invoice.anulado ? `<button class="btn" data-action="void-invoice" data-id="${invoice.id}">${iconMarkup("ban")}Anular</button>` : "";
+        const deleteBtn = invoice && state.isAdmin ? `<button class="btn danger" data-action="delete-invoice" data-id="${invoice.id}">${iconMarkup("trash-2")}Eliminar</button>` : "";
+        return modal("Detalle factura", "receipt", `<div class="receipt-box">${invoice ? buildReceiptHTML(invoice) : ""}</div>`, invoice ? `<button class="btn" data-action="reprint-invoice" data-id="${invoice.id}">${iconMarkup("printer")}Reimprimir${reprints > 0 ? ` (${reprints})` : ""}</button>${voidBtn}${deleteBtn}` : "", "medium");
       }
       return "";
     }
@@ -1985,7 +2055,7 @@
         <div class="modal-overlay" data-action="close-modal">
           <section class="modal ${size}" role="dialog" aria-modal="true" aria-label="${escapeHtml(title)}" data-stop>
             <div class="modal-header">
-              <div class="modal-title"><i data-lucide="${escapeHtml(icon)}"></i>${escapeHtml(title)}</div>
+              <div class="modal-title">${iconMarkup(icon)}${escapeHtml(title)}</div>
               ${iconButton("close-modal", "x", "Cerrar", "ghost")}
             </div>
             <div class="modal-body">${body}</div>
@@ -2001,7 +2071,7 @@
         return `
           <div class="empty-state">
             <div>
-              <i data-lucide="shopping-cart"></i>
+              ${iconMarkup("shopping-cart")}
               <strong>Carrito vacio</strong>
               <div class="muted">Agrega productos desde el catalogo.</div>
             </div>
@@ -2041,9 +2111,9 @@
     function renderCartFooter() {
       if (!state.cart.length) return `<button class="btn" data-action="close-modal">Cerrar</button>`;
       return `
-        <button class="btn" data-action="clear-cart"><i data-lucide="trash-2"></i>Vaciar</button>
-        <button class="btn" data-action="open-ticket"><i data-lucide="eye"></i>Vista previa</button>
-        <button class="btn success" data-action="print-cart"><i data-lucide="printer"></i>Facturar</button>
+        <button class="btn" data-action="clear-cart">${iconMarkup("trash-2")}Vaciar</button>
+        <button class="btn" data-action="open-ticket">${iconMarkup("eye")}Vista previa</button>
+        <button class="btn success" data-action="print-cart">${iconMarkup("printer")}Facturar</button>
       `;
     }
 
@@ -2054,9 +2124,9 @@
           <div class="mini-card">
             <label class="label">Logo del negocio</label>
             <div class="row wrap">
-              ${cfg.logo ? `<img class="logo-preview" src="${escapeHtml(cfg.logo)}" alt="Logo">` : `<div class="logo-empty"><i data-lucide="image-plus"></i></div>`}
-              <button class="btn" data-action="pick-logo"><i data-lucide="upload"></i>Subir logo</button>
-              ${cfg.logo ? `<button class="btn ghost" data-action="remove-logo"><i data-lucide="x"></i>Quitar</button>` : ""}
+              ${cfg.logo ? `<img class="logo-preview" src="${escapeHtml(cfg.logo)}" alt="Logo">` : `<div class="logo-empty">${iconMarkup("image-plus")}</div>`}
+              <button class="btn" data-action="pick-logo">${iconMarkup("upload")}Subir logo</button>
+              ${cfg.logo ? `<button class="btn ghost" data-action="remove-logo">${iconMarkup("x")}Quitar</button>` : ""}
               <input id="logoFile" class="hidden-file" type="file" accept="image/*">
             </div>
           </div>
@@ -2077,14 +2147,14 @@
           <div>
             <div class="split">
               <label class="label" style="margin:0">Iconos disponibles</label>
-              ${state.isAdmin ? `<button class="btn" data-action="open-icon-form"><i data-lucide="plus"></i>Agregar</button>` : ""}
+              ${state.isAdmin ? `<button class="btn" data-action="open-icon-form">${iconMarkup("plus")}Agregar</button>` : ""}
             </div>
             <div class="icon-grid" style="margin-top:8px">
               ${state.iconOptions.map((icon) => `
                 <div class="icon-tile">
                   ${iconMarkup(icon.value, icon.color)}
                   <span>${escapeHtml(icon.label)}</span>
-                  ${state.isAdmin ? `<button class="icon-btn ghost" data-action="delete-icon" data-id="${escapeHtml(icon.value)}" title="Eliminar" style="position:absolute;right:2px;top:2px;color:var(--red)"><i data-lucide="x"></i></button>` : ""}
+                  ${state.isAdmin ? `<button class="icon-btn ghost" data-action="delete-icon" data-id="${escapeHtml(icon.value)}" title="Eliminar" style="position:absolute;right:2px;top:2px;color:var(--red)">${iconMarkup("x")}</button>` : ""}
                 </div>
               `).join("")}
             </div>
@@ -2095,7 +2165,7 @@
           <div>
             <div class="split">
               <label class="label" style="margin:0">Categorias</label>
-              ${state.isAdmin ? `<button class="btn" data-action="open-category-form"><i data-lucide="folder-plus"></i>Agregar</button>` : ""}
+              ${state.isAdmin ? `<button class="btn" data-action="open-category-form">${iconMarkup("folder-plus")}Agregar</button>` : ""}
             </div>
             <div class="stack" style="gap:7px;margin-top:8px">
               ${state.categories.map((category) => `
@@ -2116,7 +2186,7 @@
           <div class="divider"></div>
 
           <div class="row wrap">
-            <button class="btn" data-action="open-ticket"><i data-lucide="eye"></i>Ver ticket</button>
+            <button class="btn" data-action="open-ticket">${iconMarkup("eye")}Ver ticket</button>
           </div>
         </div>
       `;
@@ -2145,7 +2215,7 @@
         <div class="stack">
           <div class="row wrap">
             <div class="search-wrap" style="flex:1 1 220px;margin:0">
-              <i data-lucide="search"></i>
+              ${iconMarkup("search")}
               <input id="historySearch" class="input" data-bind-ui="historySearch" placeholder="Buscar factura..." value="${escapeHtml(ui.historySearch)}">
             </div>
             <select id="historyMode" class="select" data-bind-ui="historyMode" style="width:auto">
@@ -2169,7 +2239,7 @@
           ${invoices.length ? invoices.map(invoiceLine).join("") : `
             <div class="empty-state">
               <div>
-                <i data-lucide="file-text"></i>
+                ${iconMarkup("file-text")}
                 <strong>No hay facturas</strong>
                 <div class="muted">Las facturas emitidas apareceran aqui.</div>
               </div>
@@ -2197,7 +2267,7 @@
             </div>
             <div class="row">
               <strong>${hnl(invoice.total)}</strong>
-              <i data-lucide="${expanded ? "chevron-up" : "chevron-down"}"></i>
+              ${iconMarkup(expanded ? "chevron-up" : "chevron-down")}
             </div>
           </div>
           ${expanded ? `
@@ -2215,10 +2285,10 @@
                 </tbody>
               </table>
               <div class="row wrap" style="justify-content:flex-end;margin-top:9px">
-                <button class="btn" data-action="view-invoice" data-id="${invoice.id}"><i data-lucide="eye"></i>Ver</button>
-                <button class="btn" data-action="reprint-invoice" data-id="${invoice.id}"><i data-lucide="printer"></i>Reimprimir${Number(invoice.reimpresiones || 0) > 0 ? ` (${Number(invoice.reimpresiones)})` : ""}</button>
-                ${!invoice.anulado ? `<button class="btn" data-action="void-invoice" data-id="${invoice.id}"><i data-lucide="ban"></i>Anular</button>` : ""}
-                ${state.isAdmin ? `<button class="btn danger" data-action="delete-invoice" data-id="${invoice.id}"><i data-lucide="trash-2"></i>Eliminar</button>` : ""}
+                <button class="btn" data-action="view-invoice" data-id="${invoice.id}">${iconMarkup("eye")}Ver</button>
+                <button class="btn" data-action="reprint-invoice" data-id="${invoice.id}">${iconMarkup("printer")}Reimprimir${Number(invoice.reimpresiones || 0) > 0 ? ` (${Number(invoice.reimpresiones)})` : ""}</button>
+                ${!invoice.anulado ? `<button class="btn" data-action="void-invoice" data-id="${invoice.id}">${iconMarkup("ban")}Anular</button>` : ""}
+                ${state.isAdmin ? `<button class="btn danger" data-action="delete-invoice" data-id="${invoice.id}">${iconMarkup("trash-2")}Eliminar</button>` : ""}
               </div>
             </div>
           ` : ""}
@@ -2228,7 +2298,7 @@
 
     function renderHistoryFooter() {
       return `
-        ${state.isAdmin && state.invoices.length ? `<button class="btn danger" data-action="clear-history"><i data-lucide="trash-2"></i>Limpiar historial</button>` : ""}
+        ${state.isAdmin && state.invoices.length ? `<button class="btn danger" data-action="clear-history">${iconMarkup("trash-2")}Limpiar historial</button>` : ""}
         <button class="btn" data-action="close-modal">Cerrar</button>
       `;
     }
@@ -2262,7 +2332,7 @@
     }
 
     function renderCierreFooter() {
-      return `<button class="btn" data-action="save-cierre-image"><i data-lucide="image"></i>Guardar imagen</button>`;
+      return `<button class="btn" data-action="save-cierre-image">${iconMarkup("image")}Guardar imagen</button>`;
     }
 
     function renderAdminBody() {
@@ -2280,12 +2350,12 @@
     function renderAdminFooter() {
       return `
         <button class="btn" data-action="close-modal">Cancelar</button>
-        <button class="btn primary" data-action="login-admin"><i data-lucide="shield-check"></i>Ingresar</button>
+        <button class="btn primary" data-action="login-admin">${iconMarkup("shield-check")}Ingresar</button>
       `;
     }
 
     function renderProductForm() {
-      const product = ui.editProductId ? state.products.find((item) => item.id === ui.editProductId) : null;
+      const product = ui.editProductId ? state.products.find((item) => String(item.id) === String(ui.editProductId)) : null;
       const draft = product || { name: "", price: 0, category: ui.selectedCategory || 0, icon: "Package", color: "#6F4E37", exenta: false };
       return `
         <div class="stack">
@@ -2295,7 +2365,7 @@
             <span class="label">Categoria</span>
             <select id="productCategory" class="select">
               <option value="0">Sin categoria</option>
-              ${state.categories.map((category) => `<option value="${category.id}" ${Number(draft.category) === category.id ? "selected" : ""}>${escapeHtml(category.name)}</option>`).join("")}
+              ${state.categories.map((category) => `<option value="${category.id}" ${String(draft.category) === String(category.id) ? "selected" : ""}>${escapeHtml(category.name)}</option>`).join("")}
             </select>
           </label>
           <label class="field">
@@ -2327,7 +2397,7 @@
     }
 
     function renderCategoryForm() {
-      const category = ui.editCategoryId ? state.categories.find((item) => item.id === ui.editCategoryId) : null;
+      const category = ui.editCategoryId ? state.categories.find((item) => String(item.id) === String(ui.editCategoryId)) : null;
       const draft = category || { name: "", icon: "Package", color: "#6F4E37" };
       return `
         <div class="stack">
@@ -2391,22 +2461,22 @@
     }
 
     function addToCart(productId) {
-      const product = state.products.find((item) => item.id === Number(productId));
+      const product = state.products.find((item) => String(item.id) === String(productId));
       if (!product) return;
-      const existing = state.cart.find((item) => item.id === product.id);
+      const existing = state.cart.find((item) => String(item.id) === String(product.id));
       if (existing) existing.qty += 1;
       else state.cart.push({ id: product.id, name: product.name, price: product.price, qty: 1, img: product.img, exenta: !!product.exenta });
-      saveState();
+      saveStateDebounced();
       toast(`${product.name} agregado`, "success");
       render();
     }
 
     function updateQty(id, delta) {
-      const item = state.cart.find((line) => line.id === Number(id));
+      const item = state.cart.find((line) => String(line.id) === String(id));
       if (!item) return;
       item.qty += delta;
-      if (item.qty <= 0) state.cart = state.cart.filter((line) => line.id !== item.id);
-      saveState();
+      if (item.qty <= 0) state.cart = state.cart.filter((line) => String(line.id) !== String(item.id));
+      saveStateDebounced();
       render();
     }
 
@@ -2469,40 +2539,46 @@
       node.innerHTML = html;
       setTimeout(() => {
         const printContent = node.innerHTML;
-        const printWindow = window.open("", "_blank", "width=400,height=700");
-        if (printWindow) {
-          printWindow.document.write(`<!DOCTYPE html>
+        try {
+          // Intentamos abrir en una pestaña nueva para escapar del sandbox de Google Sites
+          const printWindow = window.open("", "_blank", "width=400,height=700");
+          if (printWindow) {
+            printWindow.document.write(`<!DOCTYPE html>
 <html>
 <head>
-  <title>Ticket - 58mm</title>
+  <title>Ticket - 2"</title>
   <style>
     @page {
-      size: 58mm auto;
-      margin: 0 auto;
+      size: 2in auto;
+      margin: 0;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { 
-      width: 58mm !important; 
+      width: 2in !important; 
       background: #fff; 
       text-align: center;
     }
     .ticket { 
       display: block !important;
       position: relative !important;
-      width: 58mm !important; 
-      max-width: 58mm !important;
-      min-width: 58mm !important;
-      padding: 2mm !important;
+      width: 2in !important; 
+      max-width: 2in !important;
+      min-width: 2in !important;
+      padding: 1mm !important;
       margin: 0 auto !important;
       font-family: 'Courier New', Courier, monospace !important;
-      font-size: 11px !important;
+      font-size: 10px !important;
       line-height: 1.2 !important;
       background: #fff !important;
       color: #000 !important;
-      text-align: left !important;
-      left: auto !important;
-      right: auto !important;
-      transform: none !important;
+      text-align: center !important;
+    }
+    table {
+      width: 100% !important;
+      text-align: center !important;
+    }
+    th, td {
+      text-align: center !important;
     }
     @media screen {
       body { 
@@ -2520,14 +2596,31 @@
 </head>
 <body><div class="ticket">${printContent}</div></body>
 </html>`);
-          printWindow.document.close();
-          setTimeout(() => {
-            printWindow.print();
-          }, 400);
-        } else {
-          window.print();
+            printWindow.document.close();
+            setTimeout(() => {
+              try {
+                printWindow.print();
+              } catch (printErr) {
+                console.error("Window print failed, falling back to window.print", printErr);
+                window.print();
+              }
+            }, 400);
+          } else {
+            // Fallback a impresión en la misma ventana si la ventana emergente fue bloqueada
+            window.print();
+          }
+        } catch (err) {
+          console.error("Popup blocked or disallowed", err);
+          try {
+            window.print();
+          } catch (printErr) {
+            alert("No se pudo iniciar la impresión de forma nativa por restricciones de seguridad (sandbox) de Google Sites. Por favor: \n\n1. Permite las ventanas emergentes (popups) en tu navegador para este sitio, ó\n2. Abre la PWA directamente desde su URL original fuera de Google Sites.");
+          }
         }
-        node.innerHTML = "";
+        // Limpiamos el nodo con un delay largo para dar tiempo a la vista previa de captura de la impresión
+        setTimeout(() => {
+          node.innerHTML = "";
+        }, 5000);
       }, 300);
     }
 
@@ -2552,53 +2645,53 @@
         anulado: false
       };
       const cfg = data.config || state.config;
-      const logo = cfg.logo ? `<div style="text-align:center;margin-bottom:4px"><img src="${cfg.logo}" style="max-width:48mm;max-height:16mm"></div>` : "";
+      const logo = cfg.logo ? `<div style="text-align:center;margin-bottom:4px"><img src="${cfg.logo}" style="max-width:1.6in;max-height:16mm"></div>` : "";
       const customer = data.customerName
-        ? `<div style="margin-top:4px">Cliente: ${escapeHtml(data.customerName)}${data.customerRtn ? `<br>RTN: ${escapeHtml(data.customerRtn)}` : ""}</div>`
+        ? `<div style="margin-top:4px;text-align:center">Cliente: ${escapeHtml(data.customerName)}${data.customerRtn ? `<br>RTN: ${escapeHtml(data.customerRtn)}` : ""}</div>`
         : "";
       const discount = data.descuentoTerceraEdad > 0
-        ? `<tr><td>Desc. 3ra Edad (${cfg.descuentoTerceraEdad}%):</td><td style="text-align:right">-${hnl(data.descuentoTerceraEdad)}</td></tr>`
+        ? `<tr><td style="text-align:center">Desc. 3ra Edad (${cfg.descuentoTerceraEdad}%): -${hnl(data.descuentoTerceraEdad)}</td></tr>`
         : "";
       const tax = data.isvEnabled && data.iva > 0
-        ? `<tr><td>ISV (${data.taxRate}%):</td><td style="text-align:right">${hnl(data.iva)}</td></tr>`
+        ? `<tr><td style="text-align:center">ISV (${data.taxRate}%): ${hnl(data.iva)}</td></tr>`
         : "";
-      const reprintCount = Number(data.reimpresiones || 0) > 0 ? `<div>Reimpresion #${Number(data.reimpresiones)}</div>` : "";
+      const reprintCount = Number(data.reimpresiones || 0) > 0 ? `<div style="text-align:center">Reimpresion #${Number(data.reimpresiones)}</div>` : "";
       const voided = data.anulado
-        ? `<div style="text-align:center;font-weight:bold;font-size:16px;color:red;border:2px solid red;padding:4px;margin:8px 0">ANULADA</div>`
+        ? `<div style="text-align:center;font-weight:bold;font-size:14px;color:red;border:2px solid red;padding:4px;margin:8px 0">ANULADA</div>`
         : "";
       return `
-        <div style="font-family:'Courier New',Courier,monospace;font-size:11px;line-height:1.2;width:58mm;max-width:58mm;padding:1mm;box-sizing:border-box;color:#000;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact">
+        <div style="font-family:'Courier New',Courier,monospace;font-size:10px;line-height:1.2;width:2in;max-width:2in;padding:1mm;box-sizing:border-box;color:#000;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0 auto;text-align:center">
           ${logo}
-          <div style="text-align:center;font-weight:bold;font-size:14px">${escapeHtml(cfg.name)}</div>
-          <div style="text-align:center;font-size:11px">${escapeHtml(cfg.address)}<br>RTN: ${escapeHtml(cfg.rfc)}</div>
+          <div style="text-align:center;font-weight:bold;font-size:12px">${escapeHtml(cfg.name)}</div>
+          <div style="text-align:center;font-size:10px">${escapeHtml(cfg.address)}<br>RTN: ${escapeHtml(cfg.rfc)}</div>
           <div style="border-top:1px dashed #000;margin:6px 0"></div>
-          <div style="font-weight:bold">Ticket: ${escapeHtml(data.receiptNo)}</div>
-          <div>Fecha: ${escapeHtml(data.date)} ${escapeHtml(data.time || "")}</div>
+          <div style="font-weight:bold;text-align:center">Ticket: ${escapeHtml(data.receiptNo)}</div>
+          <div style="text-align:center">Fecha: ${escapeHtml(data.date)} ${escapeHtml(data.time || "")}</div>
           ${reprintCount}
           ${customer}
           <div style="border-top:1px dashed #000;margin:6px 0"></div>
-          <table style="width:100%;border-collapse:collapse">
-            <thead><tr style="border-bottom:1px solid #000"><th style="text-align:left">Cant</th><th>Producto</th><th style="text-align:right">Monto</th></tr></thead>
+          <table style="width:100%;border-collapse:collapse;text-align:center">
+            <thead><tr style="border-bottom:1px solid #000"><th style="text-align:center">Cant</th><th style="text-align:center">Producto</th><th style="text-align:center">Monto</th></tr></thead>
             <tbody>
               ${data.items.map((item) => `
                 <tr>
-                  <td>${Number(item.qty || 0)}</td>
-                  <td>${escapeHtml(item.name)}${item.exenta ? ' <span style="color:#888">(Exento)</span>' : ""}</td>
-                  <td style="text-align:right">${hnl(Number(item.price || 0) * Number(item.qty || 0))}</td>
+                  <td style="text-align:center">${Number(item.qty || 0)}</td>
+                  <td style="text-align:center">${escapeHtml(item.name)}${item.exenta ? ' <span style="color:#888">(Ex)</span>' : ""}</td>
+                  <td style="text-align:center">${hnl(Number(item.price || 0) * Number(item.qty || 0))}</td>
                 </tr>
               `).join("")}
             </tbody>
           </table>
           <div style="border-top:1px dashed #000;margin:6px 0"></div>
-          <table style="width:100%">
-            <tr><td>Subtotal:</td><td style="text-align:right">${hnl(data.subtotal)}</td></tr>
+          <table style="width:100%;text-align:center">
+            <tr style="text-align:center"><td style="text-align:center">Subtotal: ${hnl(data.subtotal)}</td></tr>
             ${discount}
             ${tax}
-            <tr style="font-weight:bold;font-size:14px"><td>TOTAL:</td><td style="text-align:right">${hnl(data.total)}</td></tr>
+            <tr style="font-weight:bold;font-size:12px;text-align:center"><td style="text-align:center">TOTAL: ${hnl(data.total)}</td></tr>
           </table>
           ${voided}
           <div style="border-top:1px dashed #000;margin:6px 0"></div>
-          <div style="text-align:center;font-size:11px">Gracias por su compra</div>
+          <div style="text-align:center;font-size:10px">Gracias por su compra</div>
         </div>
       `;
     }
@@ -2632,7 +2725,7 @@
     }
 
     function openProductForm(id = null) {
-      ui.editProductId = id ? Number(id) : null;
+      ui.editProductId = id ? String(id) : null;
       ui.modal = "product";
       render();
     }
@@ -2640,14 +2733,14 @@
     function saveProduct() {
       const name = valueOf("productName").trim();
       const price = Number(valueOf("productPrice"));
-      const category = Number(valueOf("productCategory"));
+      const category = valueOf("productCategory");
       const icon = valueOf("productIcon", "Package");
       const color = valueOf("productColor", "#6F4E37");
       const exenta = document.getElementById("productExenta")?.checked || false;
       if (!name) return toast("Nombre requerido", "error");
       if (!price || price <= 0) return toast("Precio debe ser mayor a 0", "error");
       if (ui.editProductId) {
-        state.products = state.products.map((product) => product.id === ui.editProductId ? { ...product, name, price, category, icon, color, img: icon, exenta } : product);
+        state.products = state.products.map((product) => String(product.id) === String(ui.editProductId) ? { ...product, name, price, category, icon, color, img: icon, exenta } : product);
         toast("Producto actualizado", "success");
       } else {
         state.products.push({ id: state.nextProductId++, name, price, category, icon, color, img: icon, exenta });
@@ -2660,7 +2753,7 @@
     }
 
     function openCategoryForm(id = null) {
-      ui.editCategoryId = id ? Number(id) : null;
+      ui.editCategoryId = id ? String(id) : null;
       ui.modal = "category";
       render();
     }
@@ -2671,7 +2764,7 @@
       const color = valueOf("categoryColor", "#6F4E37");
       if (!name) return toast("Nombre requerido", "error");
       if (ui.editCategoryId) {
-        state.categories = state.categories.map((category) => category.id === ui.editCategoryId ? { ...category, name, icon, color } : category);
+        state.categories = state.categories.map((category) => String(category.id) === String(ui.editCategoryId) ? { ...category, name, icon, color } : category);
         toast("Categoria actualizada", "success");
       } else {
         state.categories.push({ id: state.nextCategoryId++, name, icon, color });
@@ -2799,7 +2892,7 @@
 
     function dedupeById(list) {
       const map = new Map();
-      list.forEach((item) => map.set(Number(item.id), item));
+      list.forEach((item) => map.set(String(item.id), item));
       return [...map.values()];
     }
 
@@ -2857,11 +2950,11 @@
       if (action === "toggle-theme") { state.darkMode = !state.darkMode; saveState(); return render(); }
       if (action === "toggle-isv") { state.isvEnabled = !state.isvEnabled; saveState(); return render(); }
       if (action === "toggle-senior") { state.descuentoTerceraEdadEnabled = !state.descuentoTerceraEdadEnabled; saveState(); return render(); }
-      if (action === "select-category") { ui.selectedCategory = Number(id); ui.activeTab = "todos"; ui.search = ""; return render(); }
+      if (action === "select-category") { ui.selectedCategory = id; ui.activeTab = "todos"; ui.search = ""; return render(); }
       if (action === "add-cart") return addToCart(id);
       if (action === "qty-dec") return updateQty(id, -1);
       if (action === "qty-inc") return updateQty(id, 1);
-      if (action === "remove-cart") { state.cart = state.cart.filter((item) => item.id !== Number(id)); saveState(); return render(); }
+      if (action === "remove-cart") { state.cart = state.cart.filter((item) => String(item.id) !== String(id)); saveStateDebounced(); return render(); }
       if (action === "clear-cart") return confirm("Vaciar carrito?") && clearCart();
       if (action === "print-cart") return printCart();
       if (action === "open-ticket") { ui.modal = "ticket"; return render(); }
@@ -2869,8 +2962,8 @@
       if (action === "edit-product") return openProductForm(id);
       if (action === "delete-product") {
         if (confirm("Eliminar producto?")) {
-          state.products = state.products.filter((product) => product.id !== Number(id));
-          state.cart = state.cart.filter((item) => item.id !== Number(id));
+          state.products = state.products.filter((product) => String(product.id) !== String(id));
+          state.cart = state.cart.filter((item) => String(item.id) !== String(id));
           saveState();
           toast("Producto eliminado", "success");
           return render();
@@ -2880,8 +2973,8 @@
       if (action === "edit-category") return openCategoryForm(id);
       if (action === "delete-category") {
         if (confirm("Eliminar categoria? Los productos quedaran sin categoria.")) {
-          state.categories = state.categories.filter((category) => category.id !== Number(id));
-          state.products = state.products.map((product) => product.category === Number(id) ? { ...product, category: 0 } : product);
+          state.categories = state.categories.filter((category) => String(category.id) !== String(id));
+          state.products = state.products.map((product) => String(product.category) === String(id) ? { ...product, category: 0 } : product);
           saveState();
           toast("Categoria eliminada", "success");
           return render();
@@ -2965,20 +3058,27 @@
       const node = event.target;
       if (node.dataset?.bind) {
         const key = node.dataset.bind;
-        if (key === "search") ui.search = node.value;
-        else state[key] = node.value;
-        saveState();
-        smartRender(node);
+        if (key === "search") {
+          ui.search = node.value;
+          smartRender(node);
+        } else if (key === "customerName" || key === "customerRtn") {
+          state[key] = node.value;
+          saveStateDebounced();
+        } else {
+          state[key] = node.value;
+          saveStateDebounced();
+          smartRender(node);
+        }
       }
       if (node.dataset?.bindUi) {
         ui[node.dataset.bindUi] = node.value;
         smartRender(node);
       }
       if (node.dataset?.cartPrice) {
-        const item = state.cart.find((line) => line.id === Number(node.dataset.cartPrice));
+        const item = state.cart.find((line) => String(line.id) === String(node.dataset.cartPrice));
         if (item) {
           item.price = Math.max(0, Number(node.value) || 0);
-          saveState();
+          saveStateDebounced();
           smartRender(node);
         }
       }
